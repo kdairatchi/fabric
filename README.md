@@ -126,22 +126,20 @@ To install Fabric, you can use the latest release binaries or install it from th
 
 ### Get Latest Release Binaries
 
-```bash
-# Windows:
-curl -L https://github.com/danielmiessler/fabric/releases/latest/download/fabric-windows-amd64.exe > fabric.exe && fabric.exe --version
+#### Windows:
+`https://github.com/danielmiessler/fabric/releases/latest/download/fabric-windows-amd64.exe`
 
-# MacOS (arm64):
-curl -L https://github.com/danielmiessler/fabric/releases/latest/download/fabric-darwin-arm64 > fabric && chmod +x fabric && ./fabric --version
+#### MacOS (arm64):
+`curl -L https://github.com/danielmiessler/fabric/releases/latest/download/fabric-darwin-arm64 > fabric && chmod +x fabric && ./fabric --version`
 
-# MacOS (amd64):
-curl -L https://github.com/danielmiessler/fabric/releases/latest/download/fabric-darwin-amd64 > fabric && chmod +x fabric && ./fabric --version
+#### MacOS (amd64):
+`curl -L https://github.com/danielmiessler/fabric/releases/latest/download/fabric-darwin-amd64 > fabric && chmod +x fabric && ./fabric --version`
 
-# Linux (amd64):
-curl -L https://github.com/danielmiessler/fabric/releases/latest/download/fabric-linux-amd64 > fabric && chmod +x fabric && ./fabric --version
+#### Linux (amd64):
+`curl -L https://github.com/danielmiessler/fabric/releases/latest/download/fabric-linux-amd64 > fabric && chmod +x fabric && ./fabric --version`
 
-# Linux (arm64):
-curl -L https://github.com/danielmiessler/fabric/releases/latest/download/fabric-linux-arm64 > fabric && chmod +x fabric && ./fabric --version
-```
+#### Linux (arm64):
+`curl -L https://github.com/danielmiessler/fabric/releases/latest/download/fabric-linux-arm64 > fabric && chmod +x fabric && ./fabric --version`
 
 ### From Source
 
@@ -211,7 +209,68 @@ yt() {
 }
 ```
 
-This also creates a `yt` alias that allows you to use `yt https://www.youtube.com/watch?v=4b0iet22VIk` to get your transcripts.
+You can add the below code for the equivalent aliases inside PowerShell by running `notepad $PROFILE` inside a PowerShell window:
+
+```powershell
+# Path to the patterns directory
+$patternsPath = Join-Path $HOME ".config/fabric/patterns"
+foreach ($patternDir in Get-ChildItem -Path $patternsPath -Directory) {
+    $patternName = $patternDir.Name
+
+    # Dynamically define a function for each pattern
+    $functionDefinition = @"
+function $patternName {
+    [CmdletBinding()]
+    param(
+        [Parameter(ValueFromPipeline = `$true)]
+        [string] `$InputObject,
+
+        [Parameter(ValueFromRemainingArguments = `$true)]
+        [String[]] `$patternArgs
+    )
+
+    begin {
+        # Initialize an array to collect pipeline input
+        `$collector = @()
+    }
+
+    process {
+        # Collect pipeline input objects
+        if (`$InputObject) {
+            `$collector += `$InputObject
+        }
+    }
+
+    end {
+        # Join all pipeline input into a single string, separated by newlines
+        `$pipelineContent = `$collector -join "`n"
+
+        # If there's pipeline input, include it in the call to fabric
+        if (`$pipelineContent) {
+            `$pipelineContent | fabric --pattern $patternName `$patternArgs
+        } else {
+            # No pipeline input; just call fabric with the additional args
+            fabric --pattern $patternName `$patternArgs
+        }
+    }
+}
+"@
+    # Add the function to the current session
+    Invoke-Expression $functionDefinition
+}
+
+# Define the 'yt' function as well
+function yt {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$videoLink
+    )
+    fabric -y $videoLink --transcript
+}
+```
+
+This also creates a `yt` alias that allows you to use `yt https://www.youtube.com/watch?v=4b0iet22VIk` to get transcripts, comments, and metadata.
 
 #### Save your files in markdown using aliases
 
@@ -323,6 +382,7 @@ Application Options:
   -y, --youtube=             YouTube video "URL" to grab transcript, comments from it and send to chat
       --transcript           Grab transcript from YouTube video and send to chat (it used per default).
       --comments             Grab comments from YouTube video and send to chat
+      --metadata             Grab metadata from YouTube video and send to chat
   -g, --language=            Specify the Language Code for the chat, e.g. -g=en -g=zh
   -u, --scrape_url=          Scrape website URL to markdown using Jina AI
   -q, --scrape_question=     Search question using Jina AI
@@ -383,7 +443,15 @@ pbpaste | fabric --stream --pattern analyze_claims
 fabric -y "https://youtube.com/watch?v=uXs-zPc63kM" --stream --pattern extract_wisdom
 ```
 
-4. Create patterns- you must create a .md file with the pattern and save it to ~/.config/fabric/patterns/[yourpatternname].
+
+4. Create patterns- you must create a .md file with the pattern and save it to `~/.config/fabric/patterns/[yourpatternname]`.
+
+
+5. Run a `analyze_claims` pattern on a website. Fabric uses Jina AI to scrape the URL into markdown format before sending it to the model.
+
+```bash
+fabric -u https://github.com/danielmiessler/fabric/ -p analyze_claims
+```
 
 ## Just use the Patterns
 
@@ -414,7 +482,6 @@ When you're ready to use them, copy them into:
 
 You can then use them like any other Patterns, but they won't be public unless you explicitly submit them as Pull Requests to the Fabric project. So don't worry—they're private to you.
 
-This feature works with all openai and ollama models but does NOT work with claude. You can specify your model with the -m flag
 
 ## Helper Apps
 
@@ -474,16 +541,18 @@ alias pbpaste='xclip -selection clipboard -o'
 ## Web Interface
 
 Fabric now includes a built-in web interface that provides a GUI alternative to the command-line interface and an out-of-the-box website for those who want to get started with web development or blogging.  
-You can use this app as a GUI interface for Fabric, a ready to go blog-site, or a website template for your own projects.  
+You can use this app as a GUI interface for Fabric, a ready to go blog-site, or a website template for your own projects.
 
-The `web/src/lib/content` directory includes starter `.obsidian/` and `templates/` directories,  allowing you to open up the `web/src/lib/content/` directory as an [Obsidian.md](https://obsidian.md) vault. You can place your posts in the posts directory when you're ready to publish. 
+The `web/src/lib/content` directory includes starter `.obsidian/` and `templates/` directories, allowing you to open up the `web/src/lib/content/` directory as an [Obsidian.md](https://obsidian.md) vault. You can place your posts in the posts directory when you're ready to publish.
+
 ### Installing
 
-The GUI can be installed by navigating to the `web` directory and using `npm install`, `pnpm install`, or your favorite package manager. Then simply run the development server to start the app. 
+The GUI can be installed by navigating to the `web` directory and using `npm install`, `pnpm install`, or your favorite package manager. Then simply run the development server to start the app.
 
-_You will need to run fabric in a separate terminal with the `fabric --serve` command._ 
+_You will need to run fabric in a separate terminal with the `fabric --serve` command._
 
 **From the fabric project `web/` directory:**
+
 ```shell
 npm run dev
 
@@ -491,7 +560,7 @@ npm run dev
 
 pnpm run dev
 
-## or your equivalent 
+## or your equivalent
 ```
 
 ### Streamlit UI
@@ -507,10 +576,12 @@ streamlit run streamlit.py
 ```
 
 The Streamlit UI provides a user-friendly interface for:
+
 - Running and chaining patterns
 - Managing pattern outputs
 - Creating and editing patterns
 - Analyzing pattern results
+
 ## Meta
 
 > [!NOTE]
